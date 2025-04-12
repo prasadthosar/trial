@@ -2,8 +2,12 @@ services:
   - type: web
     name: mcx-aluminium-scraper
     runtime: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: chmod +x build.sh && ./build.sh && pip install -r requirements.txt
     startCommand: gunicorn --workers 4 --threads 2 --worker-tmp-dir /dev/shm wsgi:app
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.5
+      - key: CHROME_DISABLE_SANDBOX
+        value: "true"
+      - key: DISPLAY
+        value: ":99"

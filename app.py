@@ -43,8 +43,30 @@ url = "https://www.5paisa.com/commodity-trading/mcx-aluminium-price"
 
 # Setup Selenium WebDriver
 def get_driver():
+    """Initialize and return a Chrome WebDriver with appropriate settings for headless operation."""
     try:
+        # Debug output for Chrome location
+        chrome_path = os.environ.get('CHROME_PATH')
+        print(f"Chrome path from environment: {chrome_path}")
+        
+        if not chrome_path:
+            # Try to find Chrome in common locations
+            possible_paths = [
+                "/usr/bin/google-chrome-stable",
+                "/usr/bin/google-chrome",
+                "/usr/local/bin/google-chrome",
+                "/opt/google/chrome/google-chrome"
+            ]
+            
+            for path in possible_paths:
+                if os.path.exists(path):
+                    chrome_path = path
+                    print(f"Found Chrome at: {chrome_path}")
+                    break
+        
         options = webdriver.ChromeOptions()
+        
+        # Configure Chrome options for headless environment
         options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
@@ -52,29 +74,49 @@ def get_driver():
         options.add_argument("--window-size=1920,1080")
         options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36")
         
-        # Get Chrome path for Render environment
-        chrome_path = os.environ.get('CHROME_PATH')
+        # Add data directory to prevent profile errors
+        options.add_argument("--user-data-dir=/tmp/chrome-data")
+        
+        # Set binary location if we have a path
         if chrome_path and os.path.exists(chrome_path):
+            print(f"Setting Chrome binary location to: {chrome_path}")
             options.binary_location = chrome_path
         
-        # Try using ChromeDriverManager but handle any failures
+        # First try with ChromeDriverManager
         try:
+            print("Attempting to initialize Chrome with ChromeDriverManager...")
             service = Service(ChromeDriverManager().install())
             driver = webdriver.Chrome(service=service, options=options)
-        except Exception as driver_err:
-            print(f"Error using ChromeDriverManager: {str(driver_err)}")
-            # Fallback to direct Chrome service if available
+            print("Successfully initialized Chrome with ChromeDriverManager")
+            return driver
+        except Exception as manager_err:
+            print(f"Error using ChromeDriverManager: {str(manager_err)}")
+            
+            # Try with default Service
             try:
+                print("Attempting to initialize Chrome with default Service...")
                 service = Service()
                 driver = webdriver.Chrome(service=service, options=options)
-            except Exception as fallback_err:
-                print(f"Fallback driver error: {str(fallback_err)}")
-                raise
-        
-        return driver
+                print("Successfully initialized Chrome with default Service")
+                return driver
+            except Exception as service_err:
+                print(f"Error using default Service: {str(service_err)}")
+                
+                # Try with explicit chromedriver path
+                try:
+                    print("Attempting to initialize Chrome with explicit chromedriver path...")
+                    chromedriver_path = "/usr/local/bin/chromedriver"
+                    service = Service(executable_path=chromedriver_path)
+                    driver = webdriver.Chrome(service=service, options=options)
+                    print("Successfully initialized Chrome with explicit chromedriver path")
+                    return driver
+                except Exception as explicit_err:
+                    print(f"Error using explicit chromedriver path: {str(explicit_err)}")
+                    raise
+    
     except Exception as e:
         print(f"❌ Error initializing Chrome driver: {str(e)}")
-        raise
+        raise Exception(f"Failed to initialize Chrome: {str(e)}")
 
 def get_contract_months():
     today = datetime.today()
