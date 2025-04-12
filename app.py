@@ -43,67 +43,46 @@ url = "https://www.5paisa.com/commodity-trading/mcx-aluminium-price"
 
 # Setup Selenium WebDriver
 def get_driver():
-    """Initialize and return a Chrome WebDriver using multiple fallback methods."""
+    """Initialize and return a Chrome WebDriver using Browserless.io."""
     try:
-        print("Setting up WebDriver for Render deployment")
+        print("Setting up WebDriver for Browserless.io")
         
+        # Get the API key
+        browserless_api_key = os.environ.get("BROWSERLESS_API_KEY", "")
+        
+        if not browserless_api_key:
+            print("ERROR: No BROWSERLESS_API_KEY environment variable found")
+            raise Exception("Missing Browserless API key")
+        
+        print(f"Using Browserless.io API key: {browserless_api_key[:5]}...")
+        
+        # Browserless.io connection
+        remote_url = f"https://chrome.browserless.io/webdriver?token={browserless_api_key}"
+        
+        # Set up Chrome options for Browserless.io
         options = webdriver.ChromeOptions()
-        options.add_argument("--headless=new")
+        options.add_argument("--headless")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
+        options.add_argument("--disable-setuid-sandbox")
+        options.add_argument("--window-size=1920,1080")
         
-        # Try different approaches in sequence
+        # Set capabilities specifically for Browserless
+        options.set_capability("browserless:token", browserless_api_key)
         
-        # 1. First try Browserless.io if an API key is available
-        browserless_api_key = os.environ.get("BROWSERLESS_API_KEY", "")
-        if browserless_api_key:
-            try:
-                print(f"Connecting to Browserless.io with API key: {browserless_api_key[:5]}...")
-                remote_url = f"https://chrome.browserless.io/webdriver?token={browserless_api_key}"
-                driver = webdriver.Remote(
-                    command_executor=remote_url,
-                    options=options
-                )
-                print("Successfully connected to Browserless.io")
-                return driver
-            except Exception as browserless_err:
-                print(f"Browserless.io connection failed: {str(browserless_err)}")
-                print("Falling back to local Chrome methods...")
-        else:
-            print("No BROWSERLESS_API_KEY found, trying local Chrome methods")
+        # Initialize the remote driver with capabilities
+        print("Connecting to Browserless.io...")
+        driver = webdriver.Remote(
+            command_executor=remote_url,
+            options=options
+        )
         
-        # 2. Try with Docker Chrome path if we're running in a container
-        try:
-            print("Attempting to use Docker Chrome path...")
-            docker_chrome_path = "/usr/bin/google-chrome-stable"
-            if os.path.exists(docker_chrome_path):
-                options.binary_location = docker_chrome_path
-                
-            chromedriver_path = "/usr/local/bin/chromedriver"
-            if os.path.exists(chromedriver_path):
-                service = Service(executable_path=chromedriver_path)
-                driver = webdriver.Chrome(service=service, options=options)
-                print("Successfully initialized Chrome with Docker path")
-                return driver
-        except Exception as docker_err:
-            print(f"Docker Chrome initialization failed: {str(docker_err)}")
-        
-        # 3. Try ChromeDriverManager as a fallback
-        try:
-            print("Attempting to initialize with ChromeDriverManager...")
-            service = Service(ChromeDriverManager().install())
-            driver = webdriver.Chrome(service=service, options=options)
-            print("Successfully initialized Chrome with ChromeDriverManager")
-            return driver
-        except Exception as cdm_err:
-            print(f"ChromeDriverManager initialization failed: {str(cdm_err)}")
-            
-        # If we get here, all methods failed
-        raise Exception("All WebDriver initialization methods failed")
+        print("Successfully connected to Browserless.io")
+        return driver
             
     except Exception as e:
-        print(f"❌ Error initializing WebDriver: {str(e)}")
+        print(f"❌ Error initializing Browserless WebDriver: {str(e)}")
         raise Exception(f"Failed to initialize browser: {str(e)}")
 
 def get_contract_months():

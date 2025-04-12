@@ -8,7 +8,7 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.5
       - key: BROWSERLESS_API_KEY
-        value: "S7I7jw5E7vxkLKe72239935d39cd65878c9788631e"
+        value: S7I7jw5E7vxkLKe72239935d39cd65878c9788631e
     buildFilter:
       paths:
         - requirements.txt
