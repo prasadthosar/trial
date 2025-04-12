@@ -43,36 +43,64 @@ url = "https://www.5paisa.com/commodity-trading/mcx-aluminium-price"
 
 # Setup Selenium WebDriver
 def get_driver():
-    """Initialize and return a Chrome WebDriver using remote Browserless.io connection."""
+    """Initialize and return a Chrome WebDriver using multiple fallback methods."""
     try:
-        print("Setting up remote WebDriver for Render deployment")
+        print("Setting up WebDriver for Render deployment")
         
         options = webdriver.ChromeOptions()
         options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
         
-        # Use browserless.io for Selenium
-        # You'll need to sign up for a free account at browserless.io
-        # and set the BROWSERLESS_API_KEY environment variable
+        # Try different approaches in sequence
+        
+        # 1. First try Browserless.io if an API key is available
         browserless_api_key = os.environ.get("BROWSERLESS_API_KEY", "")
-        
         if browserless_api_key:
-            # Using browserless.io cloud service
-            remote_url = f"https://chrome.browserless.io/webdriver?token={browserless_api_key}"
-            print(f"Connecting to remote browser at browserless.io")
-            driver = webdriver.Remote(
-                command_executor=remote_url,
-                options=options
-            )
-            print("Successfully connected to browserless.io")
-            return driver
+            try:
+                print(f"Connecting to Browserless.io with API key: {browserless_api_key[:5]}...")
+                remote_url = f"https://chrome.browserless.io/webdriver?token={browserless_api_key}"
+                driver = webdriver.Remote(
+                    command_executor=remote_url,
+                    options=options
+                )
+                print("Successfully connected to Browserless.io")
+                return driver
+            except Exception as browserless_err:
+                print(f"Browserless.io connection failed: {str(browserless_err)}")
+                print("Falling back to local Chrome methods...")
         else:
-            # Fallback to local Chrome if no browserless key (for local development)
-            print("No BROWSERLESS_API_KEY found, falling back to local Chrome for development")
+            print("No BROWSERLESS_API_KEY found, trying local Chrome methods")
+        
+        # 2. Try with Docker Chrome path if we're running in a container
+        try:
+            print("Attempting to use Docker Chrome path...")
+            docker_chrome_path = "/usr/bin/google-chrome-stable"
+            if os.path.exists(docker_chrome_path):
+                options.binary_location = docker_chrome_path
+                
+            chromedriver_path = "/usr/local/bin/chromedriver"
+            if os.path.exists(chromedriver_path):
+                service = Service(executable_path=chromedriver_path)
+                driver = webdriver.Chrome(service=service, options=options)
+                print("Successfully initialized Chrome with Docker path")
+                return driver
+        except Exception as docker_err:
+            print(f"Docker Chrome initialization failed: {str(docker_err)}")
+        
+        # 3. Try ChromeDriverManager as a fallback
+        try:
+            print("Attempting to initialize with ChromeDriverManager...")
             service = Service(ChromeDriverManager().install())
             driver = webdriver.Chrome(service=service, options=options)
+            print("Successfully initialized Chrome with ChromeDriverManager")
             return driver
+        except Exception as cdm_err:
+            print(f"ChromeDriverManager initialization failed: {str(cdm_err)}")
+            
+        # If we get here, all methods failed
+        raise Exception("All WebDriver initialization methods failed")
             
     except Exception as e:
         print(f"❌ Error initializing WebDriver: {str(e)}")
