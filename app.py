@@ -1,3 +1,18 @@
+import os
+import sys
+
+# Add compatibility imports
+import importlib.metadata
+try:
+    importlib.metadata.version('werkzeug')
+except importlib.metadata.PackageNotFoundError:
+    import pkg_resources
+    pkg_resources.require('werkzeug')
+
+# Explicit URL quote import
+from werkzeug.urls import url_quote_plus as url_quote
+
+
 import csv
 import os
 import time
@@ -29,7 +44,7 @@ url = "https://www.5paisa.com/commodity-trading/mcx-aluminium-price"
 # Setup Selenium WebDriver
 def get_driver():
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
+    options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
