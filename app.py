@@ -401,6 +401,44 @@ def background_scraper():
         time.sleep(10)  # 10-second interval as requested
 
 
+@app.route("/", methods=["GET"])
+def index():
+    return """
+    <html>
+      <head>
+        <title>MCX Aluminium Scraper</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+          h1 { color: #333; }
+          .container { max-width: 800px; margin: 0 auto; }
+          .endpoint { background: #f4f4f4; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+          code { background: #e0e0e0; padding: 2px 5px; border-radius: 3px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>MCX Aluminium Scraper API</h1>
+          <p>Welcome to the MCX Aluminium Scraper API. Use the following endpoints:</p>
+          
+          <div class="endpoint">
+            <h3>Scrape Data</h3>
+            <p><code>GET /scrape</code> - Trigger the scraping process</p>
+          </div>
+          
+          <div class="endpoint">
+            <h3>Stream Data</h3>
+            <p><code>GET /stream</code> - Stream real-time data updates</p>
+          </div>
+          
+          <div class="endpoint">
+            <h3>Download CSV</h3>
+            <p><code>GET /download</code> - Download scraped data as CSV</p>
+          </div>
+        </div>
+      </body>
+    </html>
+    """
+
 @app.route("/scrape", methods=["GET"])
 def scrape():
     data = scrape_data()
