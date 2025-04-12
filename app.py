@@ -43,17 +43,38 @@ url = "https://www.5paisa.com/commodity-trading/mcx-aluminium-price"
 
 # Setup Selenium WebDriver
 def get_driver():
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36")
-    
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
-    return driver
+    try:
+        options = webdriver.ChromeOptions()
+        options.add_argument("--headless=new")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920,1080")
+        options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36")
+        
+        # Get Chrome path for Render environment
+        chrome_path = os.environ.get('CHROME_PATH')
+        if chrome_path and os.path.exists(chrome_path):
+            options.binary_location = chrome_path
+        
+        # Try using ChromeDriverManager but handle any failures
+        try:
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=options)
+        except Exception as driver_err:
+            print(f"Error using ChromeDriverManager: {str(driver_err)}")
+            # Fallback to direct Chrome service if available
+            try:
+                service = Service()
+                driver = webdriver.Chrome(service=service, options=options)
+            except Exception as fallback_err:
+                print(f"Fallback driver error: {str(fallback_err)}")
+                raise
+        
+        return driver
+    except Exception as e:
+        print(f"❌ Error initializing Chrome driver: {str(e)}")
+        raise
 
 def get_contract_months():
     today = datetime.today()
@@ -97,9 +118,16 @@ def scrape_data():
     
     try:
         # Initialize the driver
-        driver = get_driver()
-        driver.get(url)
-        print(f"Page loaded: {driver.title}")
+        try:
+            driver = get_driver()
+            driver.get(url)
+            print(f"Page loaded: {driver.title}")
+        except Exception as browser_error:
+            print(f"❌ Browser initialization error: {str(browser_error)}")
+            # Return last data if available or error message
+            if latest_data:
+                return latest_data
+            return {"error": f"Browser error: {str(browser_error)}"}
         
         # Get the date and time from the website
         market_timestamp = None
@@ -117,10 +145,11 @@ def scrape_data():
                 date_element = WebDriverWait(driver, 5).until(
                     EC.visibility_of_element_located((By.XPATH, selector))
                 )
-                date_time_text = date_element.text.strip()
-                print(f"Found date with selector: {selector}")
-                print(f"Date text: {date_time_text}")
-                break
+                date_time_text = date_element.text.strip() if date_element.text else ""
+                if date_time_text:
+                    print(f"Found date with selector: {selector}")
+                    print(f"Date text: {date_time_text}")
+                    break
             except Exception as e:
                 print(f"Date selector {selector} failed: {str(e)}")
                 continue
